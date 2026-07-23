@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>911 飛航人員視角互動模擬體驗</title>
+  <meta name="description" content="以飛航人員（機長、空服員、航管員）的視角，透過互動式 3D 模擬體驗重新理解 2001 年 9 月 11 日事件，紀念無辜受害者。">
+  <meta name="robots" content="noindex">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🕯️</text></svg>">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- Three.js Canvas -->
+  <canvas id="game-canvas"></canvas>
+
+  <!-- ==================== Loading Screen ==================== -->
+  <div id="loading-screen" class="ui-layer active">
+    <div class="loading-container">
+      <div class="loading-spinner"></div>
+      <div class="loading-text">LOADING</div>
+    </div>
+  </div>
+
+  <!-- ==================== Warning / Disclaimer Screen ==================== -->
+  <div id="warning-screen" class="ui-layer">
+    <div class="warning-container">
+      <div class="warning-icon">⚠️</div>
+      <h1 class="warning-title">內容警示</h1>
+      <div class="warning-divider"></div>
+      <p class="warning-text">
+        本互動體驗基於 <strong>2001 年 9 月 11 日</strong> 的真實歷史事件改編。
+        內容涉及恐怖攻擊、人員傷亡等敏感題材。
+        <br><br>
+        本作品的目的是<strong>紀念無辜受害者</strong>，並透過飛航人員（機長、空服員、航管員）的視角，
+        讓使用者以互動方式理解歷史事件的複雜性，促進反思與預防意識。
+        <br><br>
+        所有劇情內容均經過歷史資料交叉驗證，並附有來源引用。
+        <strong>本作品不美化、不鼓勵任何形式的暴力行為。</strong>
+      </p>
+      <div class="warning-age">18+ 建議年齡</div>
+      <div class="warning-divider"></div>
+      <div style="display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; margin-top: 24px;">
+        <button class="btn btn-primary" id="btn-enter">
+          我已了解，進入體驗
+        </button>
+        <button class="btn btn-secondary" id="btn-leave">
+          離開
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== Main Menu Screen ==================== -->
+  <div id="menu-screen" class="ui-layer">
+    <div class="menu-container">
+      <div class="menu-date">SEPTEMBER 11, 2001</div>
+      <div class="menu-title">FIRST PERSON PERSPECTIVE</div>
+      <h1 class="menu-subtitle">飛航人員視角互動體驗</h1>
+      <p class="menu-tagline">選擇一個角色，體驗那天他們所面對的一切</p>
+
+      <div class="role-cards">
+        <!-- ATC -->
+        <div class="role-card" data-role="atc" id="role-atc">
+          <div class="role-icon">📡</div>
+          <div class="role-title">航管員</div>
+          <div class="role-en">AIR TRAFFIC CONTROLLER</div>
+          <p class="role-desc">在波士頓航管中心，追蹤異常航班、協調緊急應變，並執行史無前例的全國停飛令。</p>
+        </div>
+
+        <!-- Captain -->
+        <div class="role-card" data-role="captain" id="role-captain">
+          <div class="role-icon">✈️</div>
+          <div class="role-title">機長</div>
+          <div class="role-en">CAPTAIN</div>
+          <p class="role-desc">在 AA11 駕駛艙中，面對突如其來的危機，盡最後的力量保護飛機與乘客。</p>
+        </div>
+
+        <!-- Flight Attendant -->
+        <div class="role-card" data-role="attendant" id="role-attendant">
+          <div class="role-icon">🎙️</div>
+          <div class="role-title">空服員</div>
+          <div class="role-en">FLIGHT ATTENDANT</div>
+          <p class="role-desc">在客艙中，冷靜報告情況、聯繫地面，用聲音為歷史留下關鍵證據。</p>
+        </div>
+      </div>
+
+      <p style="font-size: 12px; color: var(--text-dim); margin-top: 8px;">
+        🕯️ 獻給 2,977 位在事件中失去生命的人
+      </p>
+    </div>
+  </div>
+
+  <!-- ==================== Game HUD ==================== -->
+  <div id="game-hud" class="ui-layer">
+    <div class="hud-top">
+      <!-- Role badge -->
+      <div class="hud-role-badge">
+        <span class="role-dot"></span>
+        <span id="hud-role-name">航管員 — Boston Center</span>
+      </div>
+
+      <!-- Time display -->
+      <div class="hud-time">
+        <div class="hud-time-label">EVENT TIME</div>
+        <div class="hud-time-value" id="hud-time-value">08:00 AM</div>
+      </div>
+
+      <!-- Controls -->
+      <div class="hud-controls">
+        <button class="hud-btn" id="btn-info" title="歷史註解">📖</button>
+        <button class="hud-btn" id="btn-mute" title="靜音">🔊</button>
+        <button class="hud-btn" id="btn-menu" title="返回選單">✕</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== Dialog Box ==================== -->
+  <div id="dialog-box">
+    <div class="dialog-inner">
+      <div class="dialog-speaker" id="dialog-speaker"></div>
+      <div class="dialog-text" id="dialog-text"></div>
+
+      <!-- Historical note (toggleable) -->
+      <div class="dialog-historical-note" id="historical-note" data-has-note="false">
+        <div class="note-label">📎 歷史事實</div>
+        <div class="note-content"></div>
+      </div>
+
+      <!-- Choices container -->
+      <div class="dialog-choices" id="dialog-choices"></div>
+
+      <!-- Timer bar -->
+      <div class="dialog-timer">
+        <div class="dialog-timer-fill"></div>
+      </div>
+
+      <!-- Continue hint -->
+      <div class="dialog-continue" id="dialog-continue" style="display: none;">
+        點擊或按空白鍵繼續 ▸
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== Reflection Screen ==================== -->
+  <div id="reflection-screen" class="ui-layer">
+    <!-- Content populated by Memorial module -->
+  </div>
+
+  <!-- ==================== Memorial Screen ==================== -->
+  <div id="memorial-screen" class="ui-layer">
+    <!-- Content populated by Memorial module -->
+  </div>
+
+  <!-- ==================== Scripts ==================== -->
+  <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+  <script src="assets/audio-manager.js"></script>
+  <script src="narrative/story-data.js"></script>
+  <script src="narrative/story-engine.js"></script>
+  <script src="scenes/atc.js"></script>
+  <script src="scenes/cockpit.js"></script>
+  <script src="scenes/cabin.js"></script>
+  <script src="memorial/memorial.js"></script>
+  <script src="main.js"></script>
+
+</body>
+</html>
